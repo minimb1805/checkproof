@@ -27,7 +27,8 @@ Basic Laravel usersAPIs.
 4. Install composer packages - `composer install`.
 5. Now migrate and seed database to complete whole project setup by running this-
 ``` bash
-php artisan migrate:refresh --seed
+php artisan migrate:refresh
+php artisan db:seed
 ```
 It will create `11` Users (1 admin, and random no. of managers & users) and `10` Dummy Orders.
 
