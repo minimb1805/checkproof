@@ -20,6 +20,6 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {       
         define('RECORDS_PER_PAGE', 5);
-        define('APP_ADMIN_EMAIL', 'minirakeshmb@gmail.com');
+        define('APP_ADMIN_EMAIL', 'youremail@example.com');
     }
 }
