@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Mail\CreateUserEmail;
 use App\Mail\CreateUserAdminEmail;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Database\QueryException;
 
 class UserController extends Controller
 {
@@ -26,7 +27,7 @@ class UserController extends Controller
             'sort_order' => 'in:asc,desc'
         ]);
         if($validator->fails()){
-            return response()->json(['message'=>$validator->messages()], 400);
+            return response()->json(['error'=>$validator->messages()], 400);
         }
 
         /** default sorting, if not requested */
@@ -38,8 +39,14 @@ class UserController extends Controller
         if($request->search){
             $users = $users->whereAny(['name', 'email'], 'like', '%'.$request->search.'%');
         }
-        $users = $users->orderBy($sortBy , $sortOrder)
-                ->paginate(RECORDS_PER_PAGE);
+        $users = $users->orderBy($sortBy , $sortOrder);
+        try {
+            $users = $users->paginate(RECORDS_PER_PAGE);
+        }
+        catch(QueryException $e){
+            return response()->json(['error' => 'Database error occurred!'], 500);
+        }
+        
         $currentUser = $request->user();
         if($currentUser && $users) {
             $users = $users->map(function ($user) use ($currentUser) {
@@ -48,7 +55,7 @@ class UserController extends Controller
                 });
         }
         return UserResource::collection($users);
-        return response()->json(['message'=>'No user found matching critera'], 200);
+        return response()->json(['message'=>'No user found matching critera.'], 200);
     }
 
     /**
@@ -63,23 +70,35 @@ class UserController extends Controller
                     'password'=>'required|string|min:8'
                 ]);
         if($validator->fails()){
-            return response()->json(['message'=>$validator->messages()], 400);
+            return response()->json(['error'=>$validator->messages()], 400);
         }
 
         /** DB call for user creation */
-        $user = User::create([
-            'name'=>$request->name,
-            'email'=>$request->email,
-            'password'=>Hash::make($request->password)
-        ]);
+        try{
+            $user = User::create([
+                'name'=>$request->name,
+                'email'=>$request->email,
+                'password'=>Hash::make($request->password)
+            ]);
+        }
+        catch (QueryException $e) {
+            return response()->json(['error' => 'Database error occurred!'], 500);
+        }
         /** Mails to the user and admin queued */
-        Mail::to($request->email)->queue(new CreateUserEmail($request->name));
-        Mail::to(APP_ADMIN_EMAIL)->queue(new CreateUserAdminEmail($request->name, $request->email));
+        try {
+            Mail::to($request->email)->queue(new CreateUserEmail($request->name));
+            Mail::to(APP_ADMIN_EMAIL)->queue(new CreateUserAdminEmail($request->name, $request->email));
+        }
+        catch (Exception $e) {
+            return response()->json(['error' => 'An error occurred while sending emails, you might not receive a confirmation email.'], 500);
+        }
+        /** Mails to the user and admin queued */
+        
 
         return response()->json([
             'data'=> new UserResource($user)
         ], 200);
-        return response()->json(['message'=>'An error occurred while creating user. Please try again later!'], 500);
+        return response()->json(['error'=>'An error occurred while creating user. Please try again later!'], 500);
     }
 
     /**
