@@ -34,7 +34,7 @@ class UserController extends Controller
         $sortBy = $request->sort_by ?? 'created_at';
         $sortOrder = $request->sort_order ?? 'asc';
         
-        $users = User::where('active', '1')
+        $users = User::active()
                 ->withCount('orders');
         if($request->search){
             $users = $users->whereAny(['name', 'email'], 'like', '%'.$request->search.'%');
@@ -47,13 +47,6 @@ class UserController extends Controller
             return response()->json(['error' => 'Database error occurred!'], 500);
         }
         
-        $currentUser = $request->user();
-        if($currentUser && $users) {
-            $users = $users->map(function ($user) use ($currentUser) {
-                    $user->can_edit = $this->canEditUser($currentUser, $user);
-                    return $user;
-                });
-        }
         return UserResource::collection($users);
         return response()->json(['message'=>'No user found matching critera.'], 200);
     }
@@ -100,22 +93,4 @@ class UserController extends Controller
         ], 200);
         return response()->json(['error'=>'An error occurred while creating user. Please try again later!'], 500);
     }
-
-    /**
-     * Logic for determining if the current user can edit the specific user
-     */
-    private function canEditUser($currentUser, $user)
-    {   
-        switch ($currentUser->role) {
-            case 'admin':
-                return true;
-            case 'manager':
-                return ($user->role === 'user' || $currentUser->id === $user->id);
-            case 'user':
-                return $currentUser->id === $user->id;
-            default:
-                return false;
-        }
-    }
-
 }

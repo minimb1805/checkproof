@@ -21,7 +21,7 @@ class AuthController extends Controller
         if($validator->fails()){
             return response()->json(['message'=>$validator->messages()], 400);
         }
-        $user = User::where('active', '1')
+        $user = User::active()
             ->where('email' , $request->email);
         try {
             $user = $user->first();

@@ -21,8 +21,27 @@ class UserResource extends JsonResource
         'role' => $this->role,
         'created_at' => $this->created_at,
         'orders_count' => $this->orders_count,
-        'can_edit' => $this->can_edit ?? false
+        'can_edit' => $this->canEditUser($this, $request->user()),
        ]; 
         //return parent::toArray($request);
+    }
+
+    /**
+     * Logic for determining if the current user can edit the specific user
+     */
+    private function canEditUser($user, $currentUser = null)
+    {   
+        if($currentUser === null)
+            return false;
+        switch ($currentUser->role) {
+            case 'admin':
+                return true;
+            case 'manager':
+                return ($user->role === 'user' || $currentUser->id === $user->id);
+            case 'user':
+                return $currentUser->id === $user->id;
+            default:
+                return false;
+        }
     }
 }
