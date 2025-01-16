@@ -11,6 +11,6 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 */
 
-Route::apiResource('users', UserController::class);
-Route::post('/login', [AuthController::class, 'login']);
+Route::apiResource('users', UserController::class)->middleware('throttle:10,1');;
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);

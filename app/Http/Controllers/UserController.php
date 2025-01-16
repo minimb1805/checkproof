@@ -2,34 +2,25 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+//use Illuminate\Http\Request;
+use App\Http\Requests\UserListRequest;
+use App\Http\Requests\UserCreateRequest;
 use App\Models\User;
 use App\Http\Resources\UserResource;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use App\Mail\CreateUserEmail;
 use App\Mail\CreateUserAdminEmail;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Database\QueryException;
-
+use Exception;
+use Illuminate\Support\Facades\Log;
 class UserController extends Controller
 {
     /**
      * Display a listing of the users.
      */
-    public function index(Request $request)
+    public function index(UserListRequest $request)
     {
-       /** validates input, if any */
-        $validator = Validator::make($request->all(), [
-            'search'=>'string|max:100',
-          //  'page'=>'integer', // not needed, in case of any string, it defaults to page 1
-            'sort_by'=>'in:name,email,created_at',
-            'sort_order' => 'in:asc,desc'
-        ]);
-        if($validator->fails()){
-            return response()->json(['error'=>$validator->messages()], 400);
-        }
-
         /** default sorting, if not requested */
         $sortBy = $request->sort_by ?? 'created_at';
         $sortOrder = $request->sort_order ?? 'asc';
@@ -40,32 +31,26 @@ class UserController extends Controller
             $users = $users->whereAny(['name', 'email'], 'like', '%'.$request->search.'%');
         }
         $users = $users->orderBy($sortBy , $sortOrder);
+        //Log::debug('A message.'.$sortBy);
+        //Log::error('An error message.'.$sortBy);
+        
         try {
-            $users = $users->paginate(RECORDS_PER_PAGE);
+            
+            $users = $users->paginate(config('app.record_per_page'));
         }
         catch(QueryException $e){
             return response()->json(['error' => 'Database error occurred!'], 500);
         }
         
         return UserResource::collection($users);
-        return response()->json(['message'=>'No user found matching critera.'], 200);
+        //return response()->json(['message'=>'No user found matching critera.'], 200);
     }
 
     /**
      * Store a newly created user.
      */
-    public function store(Request $request)
+    public function store(UserCreateRequest $request)
     {
-        /** Validates input */
-        $validator = Validator::make($request->all(), [
-                    'name'=>'required|string|min:3|max:50',
-                    'email'=>'required|email|unique:users,email',
-                    'password'=>'required|string|min:8'
-                ]);
-        if($validator->fails()){
-            return response()->json(['error'=>$validator->messages()], 400);
-        }
-
         /** DB call for user creation */
         try{
             $user = User::create([
@@ -80,7 +65,7 @@ class UserController extends Controller
         /** Mails to the user and admin queued */
         try {
             Mail::to($request->email)->queue(new CreateUserEmail($request->name));
-            Mail::to(APP_ADMIN_EMAIL)->queue(new CreateUserAdminEmail($request->name, $request->email));
+            Mail::to(config('mail.from.address'))->queue(new CreateUserAdminEmail($request->name, $request->email));
         }
         catch (Exception $e) {
             return response()->json(['error' => 'An error occurred while sending emails, you might not receive a confirmation email.'], 500);
@@ -90,7 +75,7 @@ class UserController extends Controller
 
         return response()->json([
             'data'=> new UserResource($user)
-        ], 200);
-        return response()->json(['error'=>'An error occurred while creating user. Please try again later!'], 500);
+        ], 201);
+        // return response()->json(['error'=>'An error occurred while creating user. Please try again later!'], 500);
     }
 }

@@ -33,15 +33,13 @@ class UserResource extends JsonResource
     {   
         if($currentUser === null)
             return false;
-        switch ($currentUser->role) {
-            case 'admin':
-                return true;
-            case 'manager':
-                return ($user->role === 'user' || $currentUser->id === $user->id);
-            case 'user':
-                return $currentUser->id === $user->id;
-            default:
-                return false;
-        }
+        $loggedInCanEdit = match($currentUser->role){
+            'admin'=>true,
+            'manager'=>($user->role === 'user' || $currentUser->id === $user->id),
+            'user'=>$currentUser->id === $user->id,
+            default =>false,
+        };
+        return $loggedInCanEdit;
+        
     }
 }

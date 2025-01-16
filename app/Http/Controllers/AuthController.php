@@ -3,24 +3,17 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Http\Requests\LoginRequest;
 use App\Models\User;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\QueryException;
+use Exception;
 
 class AuthController extends Controller
 {
     /** Login functionality */
-    public function login(Request $request)
+    public function login(LoginRequest $request)
     {
-        /** Validates input */
-        $validator = Validator::make($request->all(), [
-            'email'=>'required|email',
-            'password'=>'required'
-        ]);
-        if($validator->fails()){
-            return response()->json(['message'=>$validator->messages()], 400);
-        }
         $user = User::active()
             ->where('email' , $request->email);
         try {
@@ -31,13 +24,13 @@ class AuthController extends Controller
         }
         
         if(!$user || !Hash::check($request->password, $user->password)){
-            return response()->json(['message'=>'Invalid Credentials'], 500);
+            return response()->json(['message'=>'Invalid Credentials'], 401);
         }
         $token = $user->createToken($user->email);
-        return [
-            'user' => $user,
-            'token' => $token->plainTextToken
-        ];
+        return response()->json([
+            'access_token' => $token->plainTextToken,
+            'token_type' => 'Bearer',
+        ], 200);
 
         
         
