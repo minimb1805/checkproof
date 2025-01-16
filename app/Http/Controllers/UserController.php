@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-//use Illuminate\Http\Request;
 use App\Http\Requests\UserListRequest;
 use App\Http\Requests\UserCreateRequest;
 use App\Models\User;
@@ -13,9 +12,13 @@ use App\Mail\CreateUserAdminEmail;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Database\QueryException;
 use Exception;
-use Illuminate\Support\Facades\Log;
+use App\Traits\ResponseTrait;
+use Illuminate\Http\Response;
+
 class UserController extends Controller
 {
+    use ResponseTrait;
+
     /**
      * Display a listing of the users.
      */
@@ -31,19 +34,15 @@ class UserController extends Controller
             $users = $users->whereAny(['name', 'email'], 'like', '%'.$request->search.'%');
         }
         $users = $users->orderBy($sortBy , $sortOrder);
-        //Log::debug('A message.'.$sortBy);
-        //Log::error('An error message.'.$sortBy);
         
-        try {
-            
+        try {            
             $users = $users->paginate(config('app.record_per_page'));
         }
         catch(QueryException $e){
-            return response()->json(['error' => 'Database error occurred!'], 500);
+            return $this->responseError(Response::HTTP_INTERNAL_SERVER_ERROR, 'Database error occurred.', null,  true, $e->getMessage());
         }
-        
+
         return UserResource::collection($users);
-        //return response()->json(['message'=>'No user found matching critera.'], 200);
     }
 
     /**
@@ -60,7 +59,7 @@ class UserController extends Controller
             ]);
         }
         catch (QueryException $e) {
-            return response()->json(['error' => 'Database error occurred!'], 500);
+            return $this->responseError(Response::HTTP_INTERNAL_SERVER_ERROR, 'Database error occurred.', null,  true, $e->getMessage());
         }
         /** Mails to the user and admin queued */
         try {
@@ -68,14 +67,14 @@ class UserController extends Controller
             Mail::to(config('mail.from.address'))->queue(new CreateUserAdminEmail($request->name, $request->email));
         }
         catch (Exception $e) {
-            return response()->json(['error' => 'An error occurred while sending emails, you might not receive a confirmation email.'], 500);
-        }
-        /** Mails to the user and admin queued */
-        
+            return $this->responseSuccess(Response::HTTP_CREATED, 'User created successfully, but you might not receive a confirmation email.', [
+                'data'=> new UserResource($user),
+            ]);
+        }     
 
-        return response()->json([
-            'data'=> new UserResource($user)
-        ], 201);
-        // return response()->json(['error'=>'An error occurred while creating user. Please try again later!'], 500);
+        return $this->responseSuccess(Response::HTTP_CREATED, 'User created successfully, you will receive a confirmation email in some time.', [
+            'data'=> new UserResource($user),
+        ]);
+
     }
 }

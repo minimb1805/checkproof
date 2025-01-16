@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Gate;
 
 class UserResource extends JsonResource
 {
@@ -21,25 +22,9 @@ class UserResource extends JsonResource
         'role' => $this->role,
         'created_at' => $this->created_at,
         'orders_count' => $this->orders_count,
-        'can_edit' => $this->canEditUser($this, $request->user()),
+        'can_edit' => $request->user() ? Gate::allows('update', $this->resource) : false,
        ]; 
         //return parent::toArray($request);
     }
-
-    /**
-     * Logic for determining if the current user can edit the specific user
-     */
-    private function canEditUser($user, $currentUser = null)
-    {   
-        if($currentUser === null)
-            return false;
-        $loggedInCanEdit = match($currentUser->role){
-            'admin'=>true,
-            'manager'=>($user->role === 'user' || $currentUser->id === $user->id),
-            'user'=>$currentUser->id === $user->id,
-            default =>false,
-        };
-        return $loggedInCanEdit;
-        
-    }
+    
 }
