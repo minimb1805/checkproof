@@ -48,7 +48,7 @@ POST API: Create User:
 http://127.0.0.1:8000/api/users
 Sample data for body:
 {
-    "email": "minirakeshmb+1@gmail.com",
+    "email": "mini@gmail.com",
     "name": "Mini",
     "password": "12345678"
 }
@@ -57,7 +57,7 @@ POST API: Login:
 
 Sample data: 
 {
-    "email": "minirakeshmb+1@gmail.com",
+    "email": "mini@gmail.com",
      "password": "12345678"
 }
 Sample response:
@@ -65,7 +65,7 @@ Sample response:
     "user": {
         "id": 23,
         "name": "Mini",
-        "email": "minirakeshmb+1@gmail.com",
+        "email": "mini@gmail.com",
         "email_verified_at": null,
         "role": "user",
         "active": 1,
